@@ -31,9 +31,8 @@ function App() {
   
         socket.current.on("searchResults", (resultsFromUsers) => {
           console.log("Received search results:", resultsFromUsers);
-          setSearchResults([]);
           if (resultsFromUsers.length > 0) {
-            setSearchResults(resultsFromUsers);
+            setSearchResults(prevResults => [...prevResults, ...resultsFromUsers]);
             // console.log(resultsFromUsers);
           } else {
             // setSearchResults([]);
@@ -48,7 +47,7 @@ function App() {
             const allSongs = await getAllSongs();
             const filteredSongs = allSongs.filter(song => song.fileName.includes(searchTerm.trim()));
             console.log("Filtered songs:", filteredSongs);
-            socket.current.emit("searchResultsFromUser", { requesterId: socket.current.id, searchResults: filteredSongs });
+            socket.current.emit("searchResultsFromUser", { requesterId: requesterId, searchResults: filteredSongs });
             // getAllSongs().then((songs) => {
             //   console.log("All songs from IndexedDB:", songs);
             //   socket.current.emit("searchResultsFromUser", { requesterId, searchResults: songs});
@@ -100,6 +99,7 @@ function App() {
 
   const handleSearch = () => {
     if (searchTerm.trim() !== "") {
+      setSearchResults([]);
       console.log("Emitting searchSongAcrossUsers with term:", searchTerm.trim());
       socket.current.emit("searchSongAcrossUsers", searchTerm.trim());
     }
