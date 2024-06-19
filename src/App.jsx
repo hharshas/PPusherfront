@@ -4,7 +4,6 @@ import { io } from "socket.io-client";
 import { initDB, saveSongToDB, getAllSongs } from "./indexedDB";
 import Crunker from 'crunker';
 
-
 function App() {
   const socket = useRef();
   const audioContext = useRef(new (window.AudioContext || window.webkitAudioContext)());
@@ -36,8 +35,10 @@ function App() {
         socket.current.on("searchResults", (resultsFromUsers) => {
           console.log("Received search results:", resultsFromUsers);
           if (resultsFromUsers.length > 0) {
-            setSearchResults(prevResults => [...prevResults, ...resultsFromUsers]);
-            // mergeAndPlaySongs(resultsFromUsers);
+            setSearchResults(prev => [
+              ...prev,
+              ...resultsFromUsers.map((val) => ({ fileName: val.fileName, dataURL: val.dataURL }))
+            ]);
           } else {
             console.log("No songs found.");
           }
@@ -46,7 +47,10 @@ function App() {
         socket.current.on("performSearch", async ({ searchTerm, requesterId }) => {
           try {
             const allSongs = await getAllSongs();
-            const filteredSongs = allSongs.filter(song => song.fileName.includes(searchTerm.trim()));
+            const specificSearchTerm = searchTerm.trim();
+            const regex = new RegExp(`${specificSearchTerm}(_firsthalf|_secondhalf)`);
+
+            const filteredSongs = allSongs.filter(song => regex.test(song.fileName));
             console.log("Filtered songs:", filteredSongs);
             socket.current.emit("searchResultsFromUser", { requesterId: requesterId, searchResults: filteredSongs });
           } catch (error) {
@@ -104,20 +108,35 @@ function App() {
   };
 
   const mergeAndPlaySongs = async () => {
-      try {
-          const audioContext = new AudioContext();
-          const buffers = await Promise.all(searchResults.map(async (song) => {
-              const arrayBuffer = await fetch(song.dataURL).then(response => response.arrayBuffer());
-              return await audioContext.decodeAudioData(arrayBuffer);
-          }));
+    try {
+        // Ensure filenames ending with "firsthalf" are prioritized
+        const uniqueResults = [
+            ...new Map(searchResults.map(song => [song.fileName, song])).values()
+        ].sort((a, b) => {
+            if (a.fileName.endsWith("firsthalf") && !b.fileName.endsWith("firsthalf")) {
+                return -1;
+            }
+            if (!a.fileName.endsWith("firsthalf") && b.fileName.endsWith("firsthalf")) {
+                return 1;
+            }
+            return 0;
+        });
 
-          const mergedBuffer = mergeAudioBuffers(buffers, audioContext);
-          setMergedAudioBuffer(mergedBuffer);
-          playMergedAudio(mergedBuffer, audioContext);
-      } catch (error) {
-          console.error("Error processing audio files:", error);
-      }
-  };
+        console.log(uniqueResults);
+        const audioContext = new AudioContext();
+        const buffers = await Promise.all(uniqueResults.map(async (song) => {
+            const arrayBuffer = await fetch(song.dataURL).then(response => response.arrayBuffer());
+            return await audioContext.decodeAudioData(arrayBuffer);
+        }));
+
+        const mergedBuffer = mergeAudioBuffers(buffers, audioContext);
+        setMergedAudioBuffer(mergedBuffer);
+        playMergedAudio(mergedBuffer, audioContext);
+    } catch (error) {
+        console.error("Error processing audio files:", error);
+    }
+};
+
 
   const sliceAudioBuffer = (audioBuffer, start, end, audioContext) => {
       const channels = [];
@@ -228,8 +247,6 @@ function App() {
     }
   };
 
-  // Rest of the code...
-  
   const handleSearch = () => {
     if (searchTerm.trim() !== "") {
       setSearchResults([]);
@@ -290,12 +307,12 @@ function App() {
       <div>
         <h2>Search Results</h2>
         <ul>
-          {searchResults.length > 0 && searchResults.map((song, index) => (
+          {searchResults.map((song, index) => (
             <li key={index}>
               <strong>Song Name: </strong> {song.fileName}
               <br />
               <audio controls>
-                <source src={song.dataURL} type={song.fileType} />
+                <source src={song.dataURL} type="audio/wav" />
                 Your browser does not support the audio element.
               </audio>
             </li>
