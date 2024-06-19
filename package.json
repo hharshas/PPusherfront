@@ -11,11 +11,14 @@
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",
+    "crunker": "^2.4.0",
     "idb": "^8.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "socket.io": "^4.7.5",
-    "socket.io-client": "^4.7.5"
+    "socket.io-client": "^4.7.5",
+    "tone": "^15.0.4",
+    "wavesurfer.js": "^7.7.15"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
