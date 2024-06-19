@@ -21,7 +21,7 @@ function App() {
   useEffect(() => {
     initDB()
       .then(() => {
-        socket.current = io("ws://localhost:8000");
+        socket.current = io("https://ppusher.onrender.com");
 
         socket.current.on("connect", () => {
           console.log("Connected to server, socket ID:", socket.current.id);
@@ -229,8 +229,6 @@ function App() {
   };
 
   // Rest of the code...
-
-
   
   const handleSearch = () => {
     if (searchTerm.trim() !== "") {
